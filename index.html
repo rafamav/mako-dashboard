@@ -140,19 +140,20 @@ code,.mono{font-family:'SF Mono','JetBrains Mono',monospace}
   <div id="app"><div style="text-align:center;padding:80px;color:#3a4a68;font-size:15px">Connecting to Supabase...</div></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script>
 // ── Config ───────────────────────────────────────────────
 const SUPA_URL  = 'https://gojsysyaargwbqyhbrkp.supabase.co';
 const SUPA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvanN5c3lhYXJnd2JxeWhicmtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyOTk2MDAsImV4cCI6MjA4NDg3NTYwMH0.ldGhghcnZmoOkLYgDAATCKSisZcyfxpDl6UFLRuC2qI';
 const PROXY_WALLET = '0xe4dF1c24449a5Ca0e79a54411c0a85703C6d6a6F';
 const BOT_NAME  = 'sweeper';
+const SUPA_HEADERS = { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` };
 
-if (!window.supabase) {
-  document.getElementById('app').innerHTML = '<div style="text-align:center;padding:60px;color:#ff4757">Supabase JS failed to load. Try hard refresh (Ctrl+Shift+R).</div>';
-  throw new Error('Supabase CDN not loaded');
+// Supabase REST helper — zero dependencies
+async function supaRest(table, query) {
+  const resp = await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, { headers: SUPA_HEADERS });
+  if (!resp.ok) throw new Error(`Supabase ${table}: ${resp.status}`);
+  return resp.json();
 }
-const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ── State ────────────────────────────────────────────────
 let botStatus    = null;   // from heartbeat raw_status
@@ -171,18 +172,15 @@ const fmtBig=(n)=>'$'+Number(n||0).toFixed(2);
 // ── 1. INITIAL LOAD ─────────────────────────────────────
 async function init() {
   try {
-    const [hbRes, trades, events] = await Promise.all([
-      sb.from('bot_heartbeats').select('raw_status,ts')
-        .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(1),
-      sb.from('bot_trades').select('*')
-        .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(50),
-      sb.from('bot_events').select('*')
-        .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(10),
+    const [hbArr, trades, events] = await Promise.all([
+      supaRest('bot_heartbeats', `select=raw_status,ts&bot_name=eq.${BOT_NAME}&order=ts.desc&limit=1`),
+      supaRest('bot_trades', `select=*&bot_name=eq.${BOT_NAME}&order=ts.desc&limit=50`),
+      supaRest('bot_events', `select=*&bot_name=eq.${BOT_NAME}&order=ts.desc&limit=10`),
     ]);
-    const hb = hbRes.data?.[0];
+    const hb = hbArr?.[0];
     if (hb) { botStatus = hb.raw_status; lastHbTs = hb.ts; }
-    liveTradesList = trades.data || [];
-    recentEvents = events.data || [];
+    liveTradesList = trades || [];
+    recentEvents = events || [];
   } catch (e) {
     console.error('Initial load failed:', e);
     $('app').innerHTML = `<div style="text-align:center;padding:60px;color:#ff4757;font-size:14px">
@@ -194,43 +192,10 @@ async function init() {
     return;
   }
   render();
-  startRealtime();
   startPolling();
 }
 
-// ── 2. REALTIME — instant trade + event push ─────────────
-function startRealtime() {
-  sb.channel('bot-live')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bot_trades', filter: `bot_name=eq.${BOT_NAME}` },
-      (payload) => {
-        // Dedupe by id
-        if (!liveTradesList.find(t => t.id === payload.new.id)) {
-          liveTradesList.unshift(payload.new);
-          liveTradesList = liveTradesList.slice(0, 50);
-          render();
-        }
-      })
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bot_trades', filter: `bot_name=eq.${BOT_NAME}` },
-      (payload) => {
-        // Update existing trade (OPEN → WIN/LOSS)
-        const idx = liveTradesList.findIndex(t => t.id === payload.new.id);
-        if (idx >= 0) liveTradesList[idx] = payload.new;
-        else liveTradesList.unshift(payload.new);
-        liveTradesList = liveTradesList.slice(0, 50);
-        render();
-      })
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bot_events', filter: `bot_name=eq.${BOT_NAME}` },
-      (payload) => {
-        recentEvents.unshift(payload.new);
-        recentEvents = recentEvents.slice(0, 10);
-        render();
-      })
-    .subscribe((status) => {
-      console.log('[REALTIME]', status);
-    });
-}
-
-// ── 3. POLLING — prices, portfolio, heartbeat ────────────
+// ── 2. POLLING — prices, portfolio, heartbeat, trades ────
 function startPolling() {
   // Binance prices — WebSocket stream (real-time, no polling)
   function startBinanceWs() {
@@ -268,19 +233,33 @@ function startPolling() {
   fetchPortfolio();
   setInterval(fetchPortfolio, 5000);
 
-  // Heartbeat from Supabase — every 5s
+  // Heartbeat from Supabase REST — every 5s
   async function fetchHeartbeat() {
     try {
-      const { data } = await sb.from('bot_heartbeats').select('raw_status,ts')
-        .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(1).single();
-      if (data) {
-        botStatus = data.raw_status;
-        lastHbTs = data.ts;
-      }
+      const arr = await supaRest('bot_heartbeats', `select=raw_status,ts&bot_name=eq.${BOT_NAME}&order=ts.desc&limit=1`);
+      if (arr?.[0]) { botStatus = arr[0].raw_status; lastHbTs = arr[0].ts; }
       render();
     } catch (e) { console.warn('Heartbeat fetch failed:', e); }
   }
+
+  // Trades from Supabase REST — every 3s (near-realtime)
+  async function fetchTrades() {
+    try {
+      const arr = await supaRest('bot_trades', `select=*&bot_name=eq.${BOT_NAME}&order=ts.desc&limit=50`);
+      if (arr) { liveTradesList = arr; render(); }
+    } catch (e) {}
+  }
+
+  // Events from Supabase REST — every 5s
+  async function fetchEvents() {
+    try {
+      const arr = await supaRest('bot_events', `select=*&bot_name=eq.${BOT_NAME}&order=ts.desc&limit=10`);
+      if (arr) { recentEvents = arr; render(); }
+    } catch (e) {}
+  }
   setInterval(fetchHeartbeat, 5000);
+  setInterval(fetchTrades, 3000);
+  setInterval(fetchEvents, 5000);
 
   // Heartbeat freshness ticker — every 1s
   setInterval(renderHbFreshness, 1000);

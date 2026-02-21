@@ -314,7 +314,7 @@ function buildRenderData() {
       usdc_onchain: usdcOnchain,
       tokens_value: tokensValue,
       positions_count: positions.length,
-      redeemable_count: positions.filter(p => p.redeemable).length,
+      redeemable_count: positions.filter(p => p.redeemable && Number(p.value) > 0).length,
       positions: positions,
     },
     performance: {
@@ -511,7 +511,7 @@ function render() {
 
   // READY TO REDEEM
   const positions = pf.positions || [];
-  const redeemablePositions = positions.filter(p => p.redeemable === true);
+  const redeemablePositions = positions.filter(p => p.redeemable === true && Number(p.value) > 0);
   if (redeemablePositions.length > 0) {
     const totalRedeemValue = redeemablePositions.reduce((s, p) => s + (p.value || 0), 0);
     h += `<div class="redeem-section"><h2>&#127942; Ready to Redeem — ${redeemablePositions.length} position${redeemablePositions.length !== 1 ? 's' : ''} &middot; <span style="font-size:14px;font-family:'SF Mono',monospace">$${totalRedeemValue.toFixed(2)} claimable</span></h2><table>

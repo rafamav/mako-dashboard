@@ -441,7 +441,7 @@ function render() {
   const heroModeClass = isShadow ? 'shadow-mode' : isLive ? 'live-mode' : '';
   const simLabel = isShadow ? ' <span style="color:#ffd93d;font-size:9px;letter-spacing:.5px">[SIMULATED]</span>' : '';
   const swCapital = Number(sw?.capital) || 0;
-  const unrealizedPnl = pfTokens - (positions.reduce((s, p) => s + (Number(p.cost) || 0), 0));
+  const unrealizedPnl = pfTokens - ((pf.positions || []).reduce((s, p) => s + (Number(p.cost) || 0), 0));
   h += `<div class="hero ${heroModeClass}">
     <div class="hero-card">
       <div class="label">Portfolio Value${simLabel}</div>

@@ -140,7 +140,7 @@ code,.mono{font-family:'SF Mono','JetBrains Mono',monospace}
   <div id="app"><div style="text-align:center;padding:80px;color:#3a4a68;font-size:15px">Connecting to Supabase...</div></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script>
 // ── Config ───────────────────────────────────────────────
 const SUPA_URL  = 'https://gojsysyaargwbqyhbrkp.supabase.co';
@@ -148,6 +148,10 @@ const SUPA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const PROXY_WALLET = '0xe4dF1c24449a5Ca0e79a54411c0a85703C6d6a6F';
 const BOT_NAME  = 'sweeper';
 
+if (!window.supabase) {
+  document.getElementById('app').innerHTML = '<div style="text-align:center;padding:60px;color:#ff4757">Supabase JS failed to load. Try hard refresh (Ctrl+Shift+R).</div>';
+  throw new Error('Supabase CDN not loaded');
+}
 const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ── State ────────────────────────────────────────────────
@@ -181,6 +185,13 @@ async function init() {
     recentEvents = events.data || [];
   } catch (e) {
     console.error('Initial load failed:', e);
+    $('app').innerHTML = `<div style="text-align:center;padding:60px;color:#ff4757;font-size:14px">
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px">Init failed</div>
+      <div style="color:#5a6a88;font-family:monospace">${e.message || e}</div>
+      <div style="color:#3a4a68;margin-top:12px;font-size:12px">Retrying in 3s...</div>
+    </div>`;
+    setTimeout(init, 3000);
+    return;
   }
   render();
   startRealtime();

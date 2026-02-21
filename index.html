@@ -449,16 +449,16 @@ function render() {
 
   // WALLET (read-only)
   const wd = d.wallet;
-  if (wd && (wd.safe_usdc_onchain != null || wd.safe_address)) {
-    const safeAddr = wd.safe_address || '';
-    const truncAddr = safeAddr ? safeAddr.slice(0, 6) + '...' + safeAddr.slice(-4) : '?';
+  if (wd && wd.safe_usdc_onchain != null) {
     const safeUsdc = Number(wd.safe_usdc_onchain || 0);
-    const eoaMatic = Number(wd.eoa_matic_balance || 0);
+    const clobUsdc = Number(wd.clob_usdc_balance || 0);
+    const clobAllowance = Number(wd.clob_usdc_allowance || 0);
+    const truncAddr = PROXY_WALLET.slice(0, 6) + '...' + PROXY_WALLET.slice(-4);
     h += `<div class="wallet-panel"><h2>Wallet (Read-Only)</h2>
       <div class="wallet-info">
-        <div class="wi"><div class="wl">Safe Address</div><div class="wv">${truncAddr}</div></div>
-        <div class="wi"><div class="wl">Safe USDC</div><div class="wv c">$${safeUsdc.toFixed(2)}</div></div>
-        <div class="wi"><div class="wl">EOA MATIC (Gas)</div><div class="wv">${eoaMatic.toFixed(4)}</div></div>
+        <div class="wi"><div class="wl">Proxy Wallet</div><div class="wv">${truncAddr}</div></div>
+        <div class="wi"><div class="wl">Safe USDC (On-chain)</div><div class="wv c">$${safeUsdc.toFixed(2)}</div></div>
+        <div class="wi"><div class="wl">CLOB USDC (Balance)</div><div class="wv">$${clobUsdc.toFixed(2)}</div></div>
       </div>
     </div>`;
   }

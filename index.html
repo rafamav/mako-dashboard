@@ -291,7 +291,8 @@ function buildRenderData() {
   // Merge: use heartbeat positions + Data API redeemable-only (avoid duplicates by slug)
   const hbSlugs = new Set(hbPositions.map(p => p.slug));
   const redeemableOnly = dataApiPositions.filter(p => p.redeemable && !hbSlugs.has(p.slug));
-  const positions = [...hbPositions, ...redeemableOnly];
+  const allPositions = [...hbPositions, ...redeemableOnly];
+  const positions = allPositions.filter(p => Number(p.value) > 0 || Number(p.size) > 0.01);
 
   const tokensValue = positions.reduce((s, p) => s + (Number(p.value) || 0), 0);
   const usdcOnchain = Number(wallet.safe_usdc_onchain) || 0;

@@ -221,19 +221,30 @@ function startRealtime() {
 
 // ── 3. POLLING — prices, portfolio, heartbeat ────────────
 function startPolling() {
-  // Binance prices — every 1s (individual fetches to avoid URL encoding issues)
-  const PRICE_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT'];
-  async function fetchPrices() {
+  // Binance prices — WebSocket stream (real-time, no polling)
+  function startBinanceWs() {
+    const streams = ['btcusdt','ethusdt','solusdt','xrpusdt'].map(s => s + '@miniTicker').join('/');
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${streams}`);
+    ws.onmessage = (e) => {
+      const d = JSON.parse(e.data);
+      if (d.s && d.c) {
+        livePrices[d.s] = parseFloat(d.c);
+        renderPricesOnly();
+      }
+    };
+    ws.onclose = () => { setTimeout(startBinanceWs, 2000); };
+    ws.onerror = () => { ws.close(); };
+  }
+  // Initial REST fetch (fast first paint), then switch to WS
+  (async () => {
     try {
-      const results = await Promise.all(
-        PRICE_SYMBOLS.map(s => fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${s}`).then(r => r.json()))
-      );
+      const symbols = ['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT'];
+      const results = await Promise.all(symbols.map(s => fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${s}`).then(r => r.json())));
       for (const d of results) livePrices[d.symbol] = parseFloat(d.price);
       renderPricesOnly();
-    } catch (e) { /* silent — will retry in 1s */ }
-  }
-  fetchPrices();
-  setInterval(fetchPrices, 1000);
+    } catch(e) {}
+    startBinanceWs();
+  })();
 
   // Portfolio from Data API — every 5s
   async function fetchPortfolio() {

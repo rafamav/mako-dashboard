@@ -167,22 +167,22 @@ const fmtBig=(n)=>'$'+Number(n||0).toFixed(2);
 // ── 1. INITIAL LOAD ─────────────────────────────────────
 async function init() {
   try {
-    const [hb, trades, events] = await Promise.all([
+    const [hbRes, trades, events] = await Promise.all([
       sb.from('bot_heartbeats').select('raw_status,ts')
-        .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(1).single(),
+        .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(1),
       sb.from('bot_trades').select('*')
         .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(50),
       sb.from('bot_events').select('*')
         .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(10),
     ]);
-    if (hb.data) { botStatus = hb.data.raw_status; lastHbTs = hb.data.ts; }
+    const hb = hbRes.data?.[0];
+    if (hb) { botStatus = hb.raw_status; lastHbTs = hb.ts; }
     liveTradesList = trades.data || [];
     recentEvents = events.data || [];
-    render();
   } catch (e) {
     console.error('Initial load failed:', e);
   }
-  // Start polling + realtime after initial load
+  render();
   startRealtime();
   startPolling();
 }
@@ -342,6 +342,7 @@ function buildRenderData() {
       fill_price: t.fill_price, amount: t.amount, net_edge_pct: t.net_edge_pct,
       bs_prob: t.bs_prob, pnl: t.pnl, mode: t.mode, slug: t.slug,
       trade_type: t.trade_type, up_ask: t.up_ask, total_cost: t.total_cost, roi_pct: t.roi_pct,
+      ts: t.ts, timestamp: t.timestamp,
     })),
     recent_events: recentEvents,
   };
@@ -562,27 +563,32 @@ function render() {
   const allTrades = d.recent_trades || [];
   if (allTrades.length > 0) {
     h += `<div class="recent"><h2>Recent Trades (${allTrades.length})</h2><table>
-      <tr><th>Bot</th><th>Result</th><th>Side</th><th>Fill</th><th>Amount</th><th>Edge</th><th>BS Prob</th><th>P&L</th><th>Mode</th><th>Market</th></tr>`;
+      <tr><th>Time</th><th>Bot</th><th>Result</th><th>Side</th><th>Fill</th><th>Amount</th><th>Edge</th><th>P&L</th><th>Market</th></tr>`;
     for (const t of allTrades.slice(0, 25)) {
       const st = t.status || 'Open';
       const sc = st === 'Win' ? 'g' : st === 'Loss' ? 'r' : 'c';
-      const mc = (t.mode || '').includes('fail') ? 'r' : t.mode === 'live' ? 'g' : 'y';
       const slug = (t.slug || '').substring(0, 30);
       const pnlV = t.pnl != null ? fmtUsd(t.pnl) : '\u2014';
       const pnlC = (t.pnl || 0) >= 0 ? 'g' : 'r';
-      const bsP = t.bs_prob != null ? (t.bs_prob * 100).toFixed(1) + '%' : '\u2014';
       const botName = (t.bot || '?').toUpperCase();
       const botColor = botName === 'SWEEPER' ? '#00ff88' : botName === 'MAKER' ? '#e056fd' : '#f9ca24';
+      // Time: show HH:MM + "Xm ago"
+      let timeStr = '\u2014';
+      if (t.ts) {
+        const dt = new Date(t.ts);
+        const ago = Math.round((Date.now() - dt.getTime()) / 60000);
+        const hhmm = dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        timeStr = `${hhmm} <span class="d">${ago < 60 ? ago + 'm' : Math.round(ago/60) + 'h'}</span>`;
+      }
       h += `<tr>
+        <td style="font-size:11px">${timeStr}</td>
         <td style="color:${botColor};font-weight:700;font-size:11px">${botName}</td>
         <td class="${sc}" style="font-weight:700">${st}</td>
         <td>${t.side || t.trade_type || '\u2014'}</td>
         <td class="mono">${(t.fill_price || t.up_ask || 0).toFixed(3)}</td>
         <td class="mono">${fmtBig(t.amount || t.total_cost)}</td>
         <td class="c mono">${(t.net_edge_pct || t.roi_pct || 0).toFixed(2)}%</td>
-        <td class="mono">${bsP}</td>
         <td class="${pnlC} mono">${pnlV}</td>
-        <td class="${mc}" style="font-size:11px">${t.mode || '?'}</td>
         <td class="d" style="font-size:11px">${slug}</td>
       </tr>`;
     }

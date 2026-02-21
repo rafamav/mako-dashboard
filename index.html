@@ -224,7 +224,7 @@ function startPolling() {
   // Binance prices — every 1s
   async function fetchPrices() {
     try {
-      const resp = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT"]');
+      const resp = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent('["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT"]'));
       const data = await resp.json();
       for (const d of data) livePrices[d.symbol] = parseFloat(d.price);
       renderPricesOnly();
@@ -271,14 +271,26 @@ function buildRenderData() {
   const feeds = raw.feeds || {};
   const rdm = raw.redeemer || null;
 
-  // Portfolio from Data API
-  const positions = (portfolio || []).map(p => ({
+  // Portfolio: merge heartbeat (active positions) + Data API (redeemable/resolved)
+  const hbPositions = (raw.portfolio?.positions || []).map(p => ({
+    slug: p.slug || p.title || '', outcome: p.outcome, size: p.size,
+    avg_price: p.avg_price, cur_price: p.cur_price, value: p.value,
+    cost: p.cost, pnl: p.pnl || p.cash_pnl, pnl_pct: p.pnl_pct, redeemable: false,
+    source: 'heartbeat'
+  }));
+  const dataApiPositions = (portfolio || []).map(p => ({
     slug: p.slug || p.title || '', outcome: p.outcome, size: p.size,
     avg_price: p.avgPrice, cur_price: p.curPrice, value: p.currentValue,
-    cost: p.initialValue, pnl: p.cashPnl, pnl_pct: p.percentPnl, redeemable: p.redeemable
+    cost: p.initialValue, pnl: p.cashPnl, pnl_pct: p.percentPnl, redeemable: p.redeemable,
+    source: 'data-api'
   }));
+  // Heartbeat has real-time active positions; Data API has redeemable ones.
+  // Merge: use heartbeat positions + Data API redeemable-only (avoid duplicates by slug)
+  const hbSlugs = new Set(hbPositions.map(p => p.slug));
+  const redeemableOnly = dataApiPositions.filter(p => p.redeemable && !hbSlugs.has(p.slug));
+  const positions = [...hbPositions, ...redeemableOnly];
 
-  const tokensValue = (portfolio || []).reduce((s, p) => s + (Number(p.currentValue) || 0), 0);
+  const tokensValue = positions.reduce((s, p) => s + (Number(p.value) || 0), 0);
   const usdcOnchain = Number(wallet.safe_usdc_onchain) || 0;
 
   return {

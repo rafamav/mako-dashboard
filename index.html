@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>MAKO — Live Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#080c14;color:#c8d0e0;font-family:'Inter','SF Pro Display',-apple-system,sans-serif;font-size:14px;line-height:1.5}
+code,.mono{font-family:'SF Mono','JetBrains Mono',monospace}
+
+.hdr{background:#0a0f1a;border-bottom:1px solid #1a2338;padding:14px 28px;display:flex;justify-content:space-between;align-items:center}
+.hdr h1{font-size:1.2em;color:#fff;font-weight:700;letter-spacing:.5px}
+.hdr h1 span{color:#4ecdc4;font-weight:400;font-size:.85em}
+.hdr-r{display:flex;gap:14px;align-items:center;font-size:12px;color:#3a4a68}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dot-g{background:#00ff88;box-shadow:0 0 8px #00ff8866}
+.dot-r{background:#ff4757;box-shadow:0 0 8px #ff475766}
+.dot-y{background:#ffd93d;box-shadow:0 0 8px #ffd93d66}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.pulse{animation:pulse 2s infinite}
+
+.wrap{max-width:1400px;margin:0 auto;padding:20px 24px}
+
+.hero{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:900px){.hero{grid-template-columns:1fr 1fr}}
+.hero-card{background:linear-gradient(135deg,#0d1220,#0f1628);border:1px solid #1a2338;border-radius:12px;padding:20px 24px;transition:border-color .3s,background .3s}
+.hero-card .label{font-size:11px;color:#3a4a68;text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+.hero-card .big{font-size:2.2em;font-weight:800;margin:6px 0 2px;font-family:'SF Mono','JetBrains Mono',monospace}
+.hero-card .sub{font-size:12px;color:#3a4a68}
+.hero-card .sub span{font-weight:600}
+
+.hero.shadow-mode .hero-card{background:linear-gradient(135deg,#140f00,#1c1500)!important;border-color:#ffd93d44!important}
+.hero.live-mode .hero-card{background:linear-gradient(135deg,#001408,#001c0f)!important;border-color:#00ff8830!important}
+
+.shadow-banner{background:linear-gradient(135deg,#1a1000,#231500);border:2px solid #ffd93d66;border-radius:10px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;font-size:14px;color:#ffd93d}
+.shadow-banner strong{font-weight:800;font-size:16px;letter-spacing:1px}
+.shadow-banner .sb-note{font-size:11px;color:#b89028;margin-left:auto;font-family:'SF Mono',monospace}
+
+.offline-banner{background:linear-gradient(135deg,#1a0000,#230000);border:2px solid #ff4757aa;border-radius:10px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;font-size:14px;color:#ff4757}
+.offline-banner strong{font-weight:800;font-size:16px;letter-spacing:1px}
+
+.redeem-section{background:linear-gradient(135deg,#001414,#001c1c);border:2px solid #4ecdc466;border-radius:12px;overflow:hidden;margin-bottom:20px}
+.redeem-section h2{padding:16px 20px 0;font-size:13px;color:#4ecdc4;text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+.redeem-section table{width:100%;border-collapse:collapse;font-size:13px}
+.redeem-section th{text-align:left;padding:10px 16px;color:#2a5a58;font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #1a3338}
+.redeem-section td{padding:12px 16px;border-bottom:1px solid #001c1c}
+.redeem-section tr:hover{background:#001c1c}
+
+.health{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.health-item{background:#0d1220;border:1px solid #1a2338;border-radius:8px;padding:8px 16px;display:flex;align-items:center;gap:8px;font-size:12px}
+.health-item .dot{width:7px;height:7px}
+
+.lb{background:#0d1220;border:1px solid #1a2338;border-radius:12px;overflow:hidden;margin-bottom:20px}
+.lb h2{padding:16px 20px 0;font-size:13px;color:#3a4a68;text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+.lb table{width:100%;border-collapse:collapse;font-size:13px}
+.lb th{text-align:left;padding:10px 16px;color:#2a3a58;font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #1a2338}
+.lb td{padding:12px 16px;border-bottom:1px solid #0f1628}
+.lb tr:hover{background:#0f1628}
+.lb .rank{font-size:1.4em;font-weight:800;width:40px;text-align:center}
+
+.bots{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:1100px){.bots{grid-template-columns:1fr}}
+.bot-card{background:#0d1220;border:1px solid #1a2338;border-radius:12px;overflow:hidden}
+.bot-card.off{opacity:.35}
+.bc-head{padding:16px 20px 12px;border-bottom:1px solid #1a2338}
+.bc-head h3{font-size:1em;font-weight:700;display:flex;align-items:center;gap:10px}
+.bc-head .tag{font-size:10px;padding:3px 8px;border-radius:4px;font-weight:700;letter-spacing:.5px}
+.tag-live{background:#00ff8818;color:#00ff88}
+.tag-shadow{background:#ffd93d18;color:#ffd93d}
+.tag-off{background:#1a233840;color:#3a4a68}
+.bc-desc{padding:0 20px 14px;font-size:12px;color:#5a6a88;line-height:1.6}
+.bc-desc strong{color:#8a9ab8}
+.bc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:#1a2338}
+.bc-stat{background:#0d1220;padding:12px 16px}
+.bc-stat .sl{font-size:10px;color:#3a4a68;text-transform:uppercase;letter-spacing:1px}
+.bc-stat .sv{font-size:1.3em;font-weight:700;margin-top:3px;font-family:'SF Mono',monospace}
+.bc-stat .ss{font-size:10px;color:#3a4a68;margin-top:2px}
+.bc-speed{padding:12px 20px;border-top:1px solid #1a2338;font-size:12px;color:#5a6a88}
+.bc-speed span{font-weight:700}
+
+.events-section{background:#0d1220;border:1px solid #1a2338;border-radius:12px;overflow:hidden;margin-bottom:20px}
+.events-section h2{padding:16px 20px 0;font-size:13px;color:#3a4a68;text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+.event-row{padding:10px 20px;border-bottom:1px solid #0f1628;font-size:12px;display:flex;gap:12px;align-items:center}
+.event-row:hover{background:#0f1628}
+.event-sev{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;min-width:60px;text-align:center}
+.sev-critical{background:#ff475720;color:#ff4757}
+.sev-warn{background:#ffd93d20;color:#ffd93d}
+.sev-info{background:#4ecdc420;color:#4ecdc4}
+.event-msg{flex:1;color:#8a9ab8}
+.event-time{color:#3a4a68;font-family:'SF Mono',monospace;font-size:11px}
+
+.prices-bar{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.price-chip{background:#0d1220;border:1px solid #1a2338;border-radius:8px;padding:8px 16px;font-family:'SF Mono',monospace;font-size:13px}
+.price-chip .pl{font-size:10px;color:#3a4a68;margin-right:6px}
+.price-chip .pv{color:#c8d0e0;font-weight:700}
+
+.recent{background:#0d1220;border:1px solid #1a2338;border-radius:12px;overflow:hidden;margin-bottom:20px}
+.recent h2{padding:16px 20px 0;font-size:13px;color:#3a4a68;text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+.recent table{width:100%;border-collapse:collapse;font-size:12px;font-family:'SF Mono',monospace}
+.recent th{text-align:left;padding:8px 14px;color:#2a3a58;font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #1a2338}
+.recent td{padding:8px 14px;border-bottom:1px solid #0f1628}
+.recent tr:hover{background:#0f1628}
+
+.infra{background:#0d1220;border:1px solid #1a2338;border-radius:12px;overflow:hidden;margin-bottom:16px}
+.infra summary{padding:14px 20px;font-size:12px;color:#3a4a68;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;cursor:pointer;list-style:none}
+.infra summary::before{content:'+ ';font-weight:700;color:#4ecdc4}
+.infra[open] summary::before{content:'- '}
+.infra-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;padding:0 20px 16px}
+.infra-item{font-size:12px}.infra-item .il{color:#3a4a68;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+.infra-item .iv{color:#c8d0e0}.infra-item .iv span{color:#4ecdc4;font-weight:600}
+
+.wallet-panel{background:linear-gradient(135deg,#0d1220,#0f1628);border:1px solid #1a2338;border-radius:12px;padding:20px 24px;margin-bottom:20px}
+.wallet-panel h2{font-size:13px;color:#3a4a68;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:14px}
+.wallet-info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:900px){.wallet-info{grid-template-columns:1fr}}
+.wallet-info .wi{background:#080c14;border:1px solid #1a2338;border-radius:8px;padding:12px 16px}
+.wallet-info .wi .wl{font-size:10px;color:#3a4a68;text-transform:uppercase;letter-spacing:1px}
+.wallet-info .wi .wv{font-size:1.3em;font-weight:700;font-family:'SF Mono',monospace;margin-top:4px;color:#c8d0e0;word-break:break-all}
+
+.footer{color:#1a2338;font-size:10px;margin-top:10px;padding-top:10px;border-top:1px solid #0f1628;text-align:center}
+
+.g{color:#00ff88!important}.r{color:#ff4757!important}.y{color:#ffd93d!important}.c{color:#4ecdc4!important}.d{color:#2a3a58!important}
+
+@keyframes flash{0%{background:#00ff8815}100%{background:transparent}}
+.flash-row{animation:flash .8s ease-out}
+</style>
+</head><body>
+
+<div class="hdr">
+  <h1>MAKO <span>Live Dashboard</span></h1>
+  <div class="hdr-r">
+    <span id="conn-dot"></span>
+    <span id="conn-lbl">Connecting...</span>
+    <span id="hb-lbl" class="mono"></span>
+    <span id="uptime-lbl" class="mono"></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="app"><div style="text-align:center;padding:80px;color:#3a4a68;font-size:15px">Connecting to Supabase...</div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ── Config ───────────────────────────────────────────────
+const SUPA_URL  = 'https://gojsysyaargwbqyhbrkp.supabase.co';
+const SUPA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvanN5c3lhYXJnd2JxeWhicmtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyOTk2MDAsImV4cCI6MjA4NDg3NTYwMH0.ldGhghcnZmoOkLYgDAATCKSisZcyfxpDl6UFLRuC2qI';
+const PROXY_WALLET = '0xe4dF1c24449a5Ca0e79a54411c0a85703C6d6a6F';
+const BOT_NAME  = 'sweeper';
+
+const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ── State ────────────────────────────────────────────────
+let botStatus    = null;   // from heartbeat raw_status
+let lastHbTs     = null;   // timestamp of last heartbeat
+let liveTradesList = [];   // from Supabase Realtime + initial load
+let livePrices   = {};     // from Binance REST
+let portfolio    = null;   // from Polymarket Data API
+let recentEvents = [];     // from Supabase Realtime + initial load
+
+// ── Helpers ──────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const fmtUsd=(n,dec=2)=>{const v=Number(n||0);return(v>=0?'+$':'-$')+Math.abs(v).toFixed(dec)};
+const fmtPct=(n)=>{const v=Number(n||0);return(v>=0?'+':'')+v.toFixed(1)+'%'};
+const fmtBig=(n)=>'$'+Number(n||0).toFixed(2);
+
+// ── 1. INITIAL LOAD ─────────────────────────────────────
+async function init() {
+  try {
+    const [hb, trades, events] = await Promise.all([
+      sb.from('bot_heartbeats').select('raw_status,ts')
+        .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(1).single(),
+      sb.from('bot_trades').select('*')
+        .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(50),
+      sb.from('bot_events').select('*')
+        .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(10),
+    ]);
+    if (hb.data) { botStatus = hb.data.raw_status; lastHbTs = hb.data.ts; }
+    liveTradesList = trades.data || [];
+    recentEvents = events.data || [];
+    render();
+  } catch (e) {
+    console.error('Initial load failed:', e);
+  }
+  // Start polling + realtime after initial load
+  startRealtime();
+  startPolling();
+}
+
+// ── 2. REALTIME — instant trade + event push ─────────────
+function startRealtime() {
+  sb.channel('bot-live')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bot_trades', filter: `bot_name=eq.${BOT_NAME}` },
+      (payload) => {
+        // Dedupe by id
+        if (!liveTradesList.find(t => t.id === payload.new.id)) {
+          liveTradesList.unshift(payload.new);
+          liveTradesList = liveTradesList.slice(0, 50);
+          render();
+        }
+      })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bot_trades', filter: `bot_name=eq.${BOT_NAME}` },
+      (payload) => {
+        // Update existing trade (OPEN → WIN/LOSS)
+        const idx = liveTradesList.findIndex(t => t.id === payload.new.id);
+        if (idx >= 0) liveTradesList[idx] = payload.new;
+        else liveTradesList.unshift(payload.new);
+        liveTradesList = liveTradesList.slice(0, 50);
+        render();
+      })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bot_events', filter: `bot_name=eq.${BOT_NAME}` },
+      (payload) => {
+        recentEvents.unshift(payload.new);
+        recentEvents = recentEvents.slice(0, 10);
+        render();
+      })
+    .subscribe((status) => {
+      console.log('[REALTIME]', status);
+    });
+}
+
+// ── 3. POLLING — prices, portfolio, heartbeat ────────────
+function startPolling() {
+  // Binance prices — every 1s
+  async function fetchPrices() {
+    try {
+      const resp = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT"]');
+      const data = await resp.json();
+      for (const d of data) livePrices[d.symbol] = parseFloat(d.price);
+      renderPricesOnly();
+    } catch (e) { /* silent — will retry in 1s */ }
+  }
+  fetchPrices();
+  setInterval(fetchPrices, 1000);
+
+  // Portfolio from Data API — every 5s
+  async function fetchPortfolio() {
+    try {
+      const resp = await fetch(`https://data-api.polymarket.com/positions?user=${PROXY_WALLET}&sizeThreshold=0.01`);
+      portfolio = await resp.json();
+      render();
+    } catch (e) { console.warn('Portfolio fetch failed:', e); }
+  }
+  fetchPortfolio();
+  setInterval(fetchPortfolio, 5000);
+
+  // Heartbeat from Supabase — every 5s
+  async function fetchHeartbeat() {
+    try {
+      const { data } = await sb.from('bot_heartbeats').select('raw_status,ts')
+        .eq('bot_name', BOT_NAME).order('ts', {ascending: false}).limit(1).single();
+      if (data) {
+        botStatus = data.raw_status;
+        lastHbTs = data.ts;
+      }
+      render();
+    } catch (e) { console.warn('Heartbeat fetch failed:', e); }
+  }
+  setInterval(fetchHeartbeat, 5000);
+
+  // Heartbeat freshness ticker — every 1s
+  setInterval(renderHbFreshness, 1000);
+}
+
+// ── BUILD RENDER DATA ────────────────────────────────────
+function buildRenderData() {
+  const raw = botStatus || {};
+  const sw = raw.sweeper || {};
+  const wallet = raw.wallet || {};
+  const cb = raw.circuit_breaker || {};
+  const feeds = raw.feeds || {};
+  const rdm = raw.redeemer || null;
+
+  // Portfolio from Data API
+  const positions = (portfolio || []).map(p => ({
+    slug: p.slug || p.title || '', outcome: p.outcome, size: p.size,
+    avg_price: p.avgPrice, cur_price: p.curPrice, value: p.currentValue,
+    cost: p.initialValue, pnl: p.cashPnl, pnl_pct: p.percentPnl, redeemable: p.redeemable
+  }));
+
+  const tokensValue = (portfolio || []).reduce((s, p) => s + (Number(p.currentValue) || 0), 0);
+  const usdcOnchain = Number(wallet.safe_usdc_onchain) || 0;
+
+  return {
+    mode: raw.mode || 'unknown',
+    uptime_h: (Number(raw.uptime_s) || 0) / 3600,
+    portfolio: {
+      total: usdcOnchain + tokensValue,
+      usdc_onchain: usdcOnchain,
+      tokens_value: tokensValue,
+      positions_count: positions.length,
+      redeemable_count: positions.filter(p => p.redeemable).length,
+      positions: positions,
+    },
+    performance: {
+      realized_pnl: Number(sw.total_pnl) || 0,
+      unrealized_pnl: 0,
+      total_pnl: Number(sw.total_pnl) || 0,
+      wins: Number(sw.wins) || 0,
+      losses: Number(sw.losses) || 0,
+      win_rate: Number(sw.win_rate) || 0,
+    },
+    circuit_breaker: cb,
+    feeds: {
+      clob_connected: raw.clob_connected,
+      binance: {
+        btc_price: livePrices.BTCUSDT || 0,
+        eth_price: livePrices.ETHUSDT || 0,
+        messages: Number(feeds.binance?.messages) || 0,
+      }
+    },
+    redeemer: rdm,
+    wallet: wallet,
+    bots: { sweeper: { ...sw, pnl: Number(sw.total_pnl) || 0 } },
+    recent_trades: liveTradesList.map(t => ({
+      id: t.id, bot: t.bot || 'sweeper', status: t.status, side: t.side,
+      fill_price: t.fill_price, amount: t.amount, net_edge_pct: t.net_edge_pct,
+      bs_prob: t.bs_prob, pnl: t.pnl, mode: t.mode, slug: t.slug,
+      trade_type: t.trade_type, up_ask: t.up_ask, total_cost: t.total_cost, roi_pct: t.roi_pct,
+    })),
+    recent_events: recentEvents,
+  };
+}
+
+// ── RENDER: heartbeat freshness only (called every 1s) ───
+function renderHbFreshness() {
+  if (!lastHbTs) return;
+  const agoSec = Math.round((Date.now() - new Date(lastHbTs).getTime()) / 1000);
+  const hbEl = $('hb-lbl');
+  if (hbEl) {
+    if (agoSec > 120) {
+      hbEl.textContent = `HB: ${Math.round(agoSec/60)}m ago`;
+      hbEl.style.color = '#ff4757';
+    } else {
+      hbEl.textContent = `HB: ${agoSec}s ago`;
+      hbEl.style.color = agoSec > 15 ? '#ffd93d' : '#3a4a68';
+    }
+  }
+}
+
+// ── RENDER: prices only (called every 1s, avoids full re-render) ──
+function renderPricesOnly() {
+  const el = $('prices-bar');
+  if (!el) return;
+  const coins = [
+    { sym: 'BTCUSDT', label: 'BTC' },
+    { sym: 'ETHUSDT', label: 'ETH' },
+    { sym: 'SOLUSDT', label: 'SOL' },
+    { sym: 'XRPUSDT', label: 'XRP' },
+  ];
+  el.innerHTML = coins.map(c => {
+    const p = livePrices[c.sym];
+    const display = p ? (p >= 100 ? '$' + p.toLocaleString(undefined, {maximumFractionDigits: 0}) : '$' + p.toFixed(4)) : '...';
+    return `<div class="price-chip"><span class="pl">${c.label}</span><span class="pv">${display}</span></div>`;
+  }).join('');
+}
+
+// ── RENDER: full dashboard ───────────────────────────────
+function render() {
+  const d = buildRenderData();
+  const pf = d.portfolio;
+  const perf = d.performance;
+  const cb = d.circuit_breaker;
+  const feeds = d.feeds;
+  const rdm = d.redeemer;
+  const uptimeH = d.uptime_h;
+  const botData = d.bots;
+  const sw = botData.sweeper;
+  const isShadow = d.mode === 'shadow';
+  const isLive = d.mode === 'live';
+
+  const pfTotal = pf.total || 0;
+  const pfUsdc = pf.usdc_onchain || 0;
+  const pfTokens = pf.tokens_value || 0;
+  const realizedPnl = perf.realized_pnl || 0;
+  const pfPositions = pf.positions_count || 0;
+  const pfRedeemable = pf.redeemable_count || 0;
+  const totalWins = perf.wins || 0;
+  const totalLosses = perf.losses || 0;
+  const winRate = perf.win_rate || 0;
+
+  // Offline detection
+  const agoSec = lastHbTs ? Math.round((Date.now() - new Date(lastHbTs).getTime()) / 1000) : 9999;
+  const isOffline = agoSec > 120;
+
+  // Status indicators
+  $('conn-dot').innerHTML = `<span class="dot ${isOffline ? 'dot-r' : cb.killed ? 'dot-r' : isShadow ? 'dot-y' : 'dot-g'} pulse"></span>`;
+  $('conn-lbl').textContent = isOffline ? 'OFFLINE' : cb.killed ? 'KILLED' : isShadow ? 'SHADOW' : 'Live';
+  $('uptime-lbl').textContent = uptimeH.toFixed(1) + 'h';
+
+  const bots = [];
+  if (sw) bots.push({name: 'SWEEPER', color: '#00ff88', data: sw});
+  bots.sort((a, b) => (b.data.pnl || 0) - (a.data.pnl || 0));
+
+  let h = '';
+
+  // OFFLINE BANNER
+  if (isOffline) {
+    const agoMin = Math.round(agoSec / 60);
+    h += `<div class="offline-banner">
+      <span style="font-size:22px">&#9888;&#65039;</span>
+      <div>
+        <strong>BOT OFFLINE</strong><br>
+        <span style="font-size:12px">Last heartbeat ${agoMin} minute${agoMin !== 1 ? 's' : ''} ago. Bot may be down or disconnected.</span>
+      </div>
+    </div>`;
+  }
+
+  // SHADOW MODE BANNER
+  if (isShadow && !isOffline) {
+    h += `<div class="shadow-banner">
+      <span style="font-size:22px">&#9888;&#65039;</span>
+      <div>
+        <strong>SHADOW MODE</strong><br>
+        <span style="font-size:12px;color:#b89028">Simulated trading — NO real funds at risk. Orders are NOT sent to CLOB.</span>
+      </div>
+      <span class="sb-note">MODE: ${(d.mode || '?').toUpperCase()}</span>
+    </div>`;
+  }
+
+  // PRICES BAR (updated independently every 1s)
+  h += `<div class="prices-bar" id="prices-bar"></div>`;
+
+  // HERO CARDS
+  const heroModeClass = isShadow ? 'shadow-mode' : isLive ? 'live-mode' : '';
+  const simLabel = isShadow ? ' <span style="color:#ffd93d;font-size:9px;letter-spacing:.5px">[SIMULATED]</span>' : '';
+  h += `<div class="hero ${heroModeClass}">
+    <div class="hero-card">
+      <div class="label">Portfolio Total${simLabel}</div>
+      <div class="big c">${pfTotal > 0 ? fmtBig(pfTotal) : 'Loading...'}</div>
+      <div class="sub">USDC: <span>${fmtBig(pfUsdc)}</span> + Tokens: <span>${fmtBig(pfTokens)}</span></div>
+    </div>
+    <div class="hero-card">
+      <div class="label">USDC Cash${simLabel}</div>
+      <div class="big" style="color:#4ecdc4">${fmtBig(pfUsdc)}</div>
+      <div class="sub">${pfPositions} positions${pfRedeemable > 0 ? ' · <span class="c">' + pfRedeemable + ' redeemable</span>' : ''}</div>
+    </div>
+    <div class="hero-card">
+      <div class="label">Realized P&L${simLabel}</div>
+      <div class="big ${realizedPnl >= 0 ? 'g' : 'r'}">${fmtUsd(realizedPnl)}</div>
+      <div class="sub">W/L: <span>${totalWins}/${totalLosses}</span> · WR: <span class="${winRate >= 80 ? 'g' : winRate >= 50 ? 'y' : 'r'}">${winRate.toFixed(0)}%</span></div>
+    </div>
+    <div class="hero-card">
+      <div class="label">System Health</div>
+      <div class="big ${isOffline ? 'r' : cb.killed ? 'r' : isShadow ? 'y' : 'g'}">${isOffline ? 'OFFLINE' : cb.killed ? 'STOPPED' : isShadow ? 'SHADOW' : 'RUNNING'}</div>
+      <div class="sub">${(d.mode || '?').toUpperCase()} · ${bots.length} bot${bots.length !== 1 ? 's' : ''} · ${uptimeH.toFixed(1)}h</div>
+    </div>
+  </div>`;
+
+  // WALLET (read-only)
+  const wd = d.wallet;
+  if (wd && (wd.safe_usdc_onchain != null || wd.safe_address)) {
+    const safeAddr = wd.safe_address || '';
+    const truncAddr = safeAddr ? safeAddr.slice(0, 6) + '...' + safeAddr.slice(-4) : '?';
+    const safeUsdc = Number(wd.safe_usdc_onchain || 0);
+    const eoaMatic = Number(wd.eoa_matic_balance || 0);
+    h += `<div class="wallet-panel"><h2>Wallet (Read-Only)</h2>
+      <div class="wallet-info">
+        <div class="wi"><div class="wl">Safe Address</div><div class="wv">${truncAddr}</div></div>
+        <div class="wi"><div class="wl">Safe USDC</div><div class="wv c">$${safeUsdc.toFixed(2)}</div></div>
+        <div class="wi"><div class="wl">EOA MATIC (Gas)</div><div class="wv">${eoaMatic.toFixed(4)}</div></div>
+      </div>
+    </div>`;
+  }
+
+  // HEALTH BAR
+  const connected = feeds.clob_connected;
+  const bn = feeds.binance || {};
+  h += `<div class="health">
+    <div class="health-item"><span class="dot ${connected === false ? 'dot-r' : 'dot-g'}"></span> CLOB WS</div>
+    <div class="health-item"><span class="dot ${bn.btc_price > 0 ? 'dot-g' : 'dot-r'}"></span> Binance <span class="mono d">BTC $${(bn.btc_price || 0).toLocaleString()}</span></div>
+    ${rdm ? `<div class="health-item"><span class="dot dot-g"></span> Redeemer <span class="mono c">${rdm.redeems_completed || 0} done / ${rdm.pending || 0} pending</span></div>` : ''}
+    <div class="health-item"><span class="dot ${cb.killed ? 'dot-r' : 'dot-g'}"></span> Circuit Breaker${cb.kill_reason ? ` <span class="r" style="font-size:10px;margin-left:4px">— ${(cb.kill_reason || '').substring(0, 40)}</span>` : ''}</div>
+    <div class="health-item"><span class="dot ${isOffline ? 'dot-r' : agoSec > 15 ? 'dot-y' : 'dot-g'}"></span> Heartbeat <span class="mono d">${agoSec < 9999 ? agoSec + 's ago' : '?'}</span></div>
+  </div>`;
+
+  // BOT LEADERBOARD
+  if (bots.length > 0) {
+    h += `<div class="lb"><h2>Bot Leaderboard</h2><table>
+      <tr><th>#</th><th>Bot</th><th>P&L (session)</th><th>Win Rate</th><th>W/L</th><th>Capital</th></tr>`;
+    bots.forEach((b, i) => {
+      const bd = b.data;
+      const pnl = bd.pnl || 0;
+      const pc = pnl >= 0 ? 'g' : 'r';
+      const wr = bd.win_rate || 0;
+      const wc = wr >= 80 ? 'g' : wr >= 50 ? 'y' : 'r';
+      h += `<tr>
+        <td class="rank" style="color:${b.color}">${i + 1}</td>
+        <td style="font-weight:700;color:${b.color}">${b.name}</td>
+        <td class="${pc} mono" style="font-weight:700">${fmtUsd(pnl)}</td>
+        <td class="${wc}" style="font-weight:700">${wr.toFixed(0)}%</td>
+        <td class="mono">${bd.wins || 0}W / ${bd.losses || 0}L</td>
+        <td class="mono">${fmtBig(bd.capital)}</td>
+      </tr>`;
+    });
+    h += '</table></div>';
+  }
+
+  // READY TO REDEEM
+  const positions = pf.positions || [];
+  const redeemablePositions = positions.filter(p => p.redeemable === true);
+  if (redeemablePositions.length > 0) {
+    const totalRedeemValue = redeemablePositions.reduce((s, p) => s + (p.value || 0), 0);
+    h += `<div class="redeem-section"><h2>&#127942; Ready to Redeem — ${redeemablePositions.length} position${redeemablePositions.length !== 1 ? 's' : ''} &middot; <span style="font-size:14px;font-family:'SF Mono',monospace">$${totalRedeemValue.toFixed(2)} claimable</span></h2><table>
+      <tr><th>Market</th><th>Side</th><th>Size</th><th>Value</th><th>Cost</th><th>P&L</th></tr>`;
+    for (const p of redeemablePositions) {
+      const pnl = p.pnl || 0;
+      const pc = pnl >= 0 ? 'g' : 'r';
+      const slug = (p.slug || '').substring(0, 45);
+      h += `<tr>
+        <td style="font-size:12px">${slug}</td>
+        <td>${p.outcome || '\u2014'}</td>
+        <td class="mono">${Number(p.size || 0).toFixed(1)}</td>
+        <td class="mono c" style="font-weight:700">${fmtBig(p.value)}</td>
+        <td class="mono d">${fmtBig(p.cost)}</td>
+        <td class="${pc} mono" style="font-weight:700">${fmtUsd(pnl)}</td>
+      </tr>`;
+    }
+    h += '</table></div>';
+  }
+
+  // POSITIONS TABLE
+  if (positions.length > 0) {
+    h += `<div class="lb"><h2>Open Positions (${positions.length})</h2><table>
+      <tr><th>Market</th><th>Side</th><th>Size</th><th>Avg Price</th><th>Cur Price</th><th>Value</th><th>Cost</th><th>P&L</th><th>P&L %</th></tr>`;
+    const sorted = [...positions].sort((a, b) => Math.abs(b.value || 0) - Math.abs(a.value || 0));
+    for (const p of sorted.slice(0, 30)) {
+      const pnl = p.pnl || 0;
+      const pnlPct = p.pnl_pct || 0;
+      const pc = pnl >= 0 ? 'g' : 'r';
+      const slug = (p.slug || '').substring(0, 35);
+      const rdmTag = p.redeemable ? '<span class="c" style="font-size:10px"> &#10003;REDEEM</span>' : '';
+      h += `<tr>
+        <td style="font-size:12px">${slug}${rdmTag}</td>
+        <td>${p.outcome || '\u2014'}</td>
+        <td class="mono">${Number(p.size || 0).toFixed(1)}</td>
+        <td class="mono">${Number(p.avg_price || 0).toFixed(3)}</td>
+        <td class="mono">${Number(p.cur_price || 0).toFixed(3)}</td>
+        <td class="mono">${fmtBig(p.value)}</td>
+        <td class="mono d">${fmtBig(p.cost)}</td>
+        <td class="${pc} mono" style="font-weight:700">${fmtUsd(pnl)}</td>
+        <td class="${pc} mono">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%</td>
+      </tr>`;
+    }
+    h += '</table></div>';
+  }
+
+  // RECENT TRADES
+  const allTrades = d.recent_trades || [];
+  if (allTrades.length > 0) {
+    h += `<div class="recent"><h2>Recent Trades (${allTrades.length})</h2><table>
+      <tr><th>Bot</th><th>Result</th><th>Side</th><th>Fill</th><th>Amount</th><th>Edge</th><th>BS Prob</th><th>P&L</th><th>Mode</th><th>Market</th></tr>`;
+    for (const t of allTrades.slice(0, 25)) {
+      const st = t.status || 'Open';
+      const sc = st === 'Win' ? 'g' : st === 'Loss' ? 'r' : 'c';
+      const mc = (t.mode || '').includes('fail') ? 'r' : t.mode === 'live' ? 'g' : 'y';
+      const slug = (t.slug || '').substring(0, 30);
+      const pnlV = t.pnl != null ? fmtUsd(t.pnl) : '\u2014';
+      const pnlC = (t.pnl || 0) >= 0 ? 'g' : 'r';
+      const bsP = t.bs_prob != null ? (t.bs_prob * 100).toFixed(1) + '%' : '\u2014';
+      const botName = (t.bot || '?').toUpperCase();
+      const botColor = botName === 'SWEEPER' ? '#00ff88' : botName === 'MAKER' ? '#e056fd' : '#f9ca24';
+      h += `<tr>
+        <td style="color:${botColor};font-weight:700;font-size:11px">${botName}</td>
+        <td class="${sc}" style="font-weight:700">${st}</td>
+        <td>${t.side || t.trade_type || '\u2014'}</td>
+        <td class="mono">${(t.fill_price || t.up_ask || 0).toFixed(3)}</td>
+        <td class="mono">${fmtBig(t.amount || t.total_cost)}</td>
+        <td class="c mono">${(t.net_edge_pct || t.roi_pct || 0).toFixed(2)}%</td>
+        <td class="mono">${bsP}</td>
+        <td class="${pnlC} mono">${pnlV}</td>
+        <td class="${mc}" style="font-size:11px">${t.mode || '?'}</td>
+        <td class="d" style="font-size:11px">${slug}</td>
+      </tr>`;
+    }
+    h += '</table></div>';
+  }
+
+  // EVENTS SECTION
+  if (d.recent_events && d.recent_events.length > 0) {
+    h += `<div class="events-section"><h2>Recent Events</h2>`;
+    for (const ev of d.recent_events.slice(0, 5)) {
+      const sev = (ev.severity || 'info').toLowerCase();
+      const sevClass = sev === 'critical' ? 'sev-critical' : sev === 'warn' || sev === 'warning' ? 'sev-warn' : 'sev-info';
+      const ts = ev.ts ? new Date(ev.ts).toLocaleTimeString() : '';
+      h += `<div class="event-row">
+        <span class="event-sev ${sevClass}">${sev}</span>
+        <span class="event-msg">${ev.message || ev.event_type || ''}</span>
+        <span class="event-time">${ts}</span>
+      </div>`;
+    }
+    h += '</div>';
+  }
+
+  // INFRASTRUCTURE
+  const bn2 = feeds.binance || {};
+  h += `<details class="infra"><summary>Infrastructure & Feeds</summary><div class="infra-grid">
+    <div class="infra-item">
+      <div class="il">Binance Prices (REST 1s)</div>
+      <div class="iv">BTC <span>$${(livePrices.BTCUSDT || 0).toLocaleString()}</span></div>
+      <div class="iv">ETH <span>$${(livePrices.ETHUSDT || 0).toLocaleString()}</span></div>
+      <div class="iv">SOL <span>$${(livePrices.SOLUSDT || 0).toFixed(2)}</span></div>
+    </div>
+    <div class="infra-item">
+      <div class="il">Bot Binance WS</div>
+      <div class="iv">${(bn2.messages || 0).toLocaleString()} msgs</div>
+    </div>
+    ${rdm ? `<div class="infra-item"><div class="il">Auto-Redeemer</div><div class="iv">Completed: <span>${rdm.redeems_completed || 0}</span> | Failed: <span class="${(rdm.redeems_failed || 0) > 0 ? 'r' : 'g'}">${rdm.redeems_failed || 0}</span></div><div class="iv">Total: <span>$${Number(rdm.total_redeemed_usd || 0).toFixed(2)}</span></div></div>` : ''}
+    <div class="infra-item"><div class="il">Data Sources</div><div class="iv"><span class="c">Supabase</span> heartbeat + realtime</div><div class="iv"><span class="c">Data API</span> positions</div><div class="iv"><span class="c">Binance REST</span> prices</div></div>
+    <div class="infra-item"><div class="il">Server</div><div class="iv">Rust &middot; ${d.mode || '?'} mode &middot; ${uptimeH.toFixed(1)}h</div></div>
+  </div></details>`;
+
+  h += `<div class="footer">MAKO Live &middot; Supabase + Data API + Binance &middot; Zero SSH &middot; ${new Date().toLocaleTimeString()}</div>`;
+  $('app').innerHTML = h;
+
+  // Re-render prices immediately after full render
+  renderPricesOnly();
+}
+
+// ── BOOT ─────────────────────────────────────────────────
+init();
+</script>
+</body></html>

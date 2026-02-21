@@ -292,7 +292,7 @@ function buildRenderData() {
   const hbSlugs = new Set(hbPositions.map(p => p.slug));
   const redeemableOnly = dataApiPositions.filter(p => p.redeemable && !hbSlugs.has(p.slug));
   const allPositions = [...hbPositions, ...redeemableOnly];
-  const positions = allPositions.filter(p => Number(p.value) > 0 || Number(p.size) > 0.01);
+  const positions = allPositions.filter(p => Number(p.value) > 0.001);
 
   const tokensValue = positions.reduce((s, p) => s + (Number(p.value) || 0), 0);
   const usdcOnchain = Number(wallet.safe_usdc_onchain) || 0;
